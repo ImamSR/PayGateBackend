@@ -1,0 +1,246 @@
+spring:
+  config:
+    import: optional:file:backend/.env[.properties],optional:file:.env[.properties]
+
+  application:
+    name: websocket-payment-service
+  
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST}:${DB_PORT}/${PAYMENT_DB_NAME}}
+    username: ${SPRING_DATASOURCE_USERNAME:${APP_PAYMENT_DB_USER}}
+    password: ${SPRING_DATASOURCE_PASSWORD:${APP_PAYMENT_DB_PASSWORD}}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 10
+      maximum-pool-size: ${CONNECTION_POOL_SIZE}
+      idle-timeout: 300000
+      max-lifetime: 600000
+      connection-timeout: 30000
+      pool-name: PaymentServiceCP
+  
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          batch_size: 20
+        order_inserts: true
+        order_updates: true
+    show-sql: false
+  
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:false}
+    locations: classpath:db/migration/payment
+    baseline-on-migrate: true
+    validate-on-migrate: true
+  
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:${RABBITMQ_HOST}}
+    port: ${SPRING_RABBITMQ_PORT:${RABBITMQ_PORT}}
+    username: ${SPRING_RABBITMQ_USERNAME:${RABBITMQ_USER}}
+    password: ${SPRING_RABBITMQ_PASSWORD:${RABBITMQ_PASSWORD}}
+    listener:
+      simple:
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          multiplier: 2
+  
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
+
+server:
+  port: ${SERVER_PORT}
+  shutdown: graceful
+  error:
+    include-message: always
+    include-binding-errors: always
+
+app:
+  auth-flyway:
+    enabled: ${APP_AUTH_FLYWAY_ENABLED}
+  cors:
+    allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:${ALLOWED_ORIGINS}}
+  auth-datasource:
+    url: ${APP_AUTH_DATASOURCE_URL:jdbc:postgresql://${DB_HOST}:${DB_PORT}/${AUTH_DB_NAME}}
+    username: ${APP_AUTH_DATASOURCE_USERNAME:${APP_AUTH_DB_USER}}
+    password: ${APP_AUTH_DATASOURCE_PASSWORD:${APP_AUTH_DB_PASSWORD}}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      minimum-idle: 2
+      maximum-pool-size: ${AUTH_CONNECTION_POOL_SIZE}
+      idle-timeout: 300000
+      max-lifetime: 600000
+      connection-timeout: 30000
+      pool-name: AuthServiceCP
+  auth:
+    access-cookie:
+      name: ${APP_AUTH_ACCESS_COOKIE_NAME}
+      path: ${APP_AUTH_ACCESS_COOKIE_PATH}
+      max-age-seconds: ${APP_AUTH_ACCESS_COOKIE_MAX_AGE_SECONDS}
+    refresh-cookie:
+      name: ${APP_AUTH_REFRESH_COOKIE_NAME}
+      secure: ${APP_AUTH_REFRESH_COOKIE_SECURE}
+      same-site: ${APP_AUTH_REFRESH_COOKIE_SAME_SITE}
+      path: ${APP_AUTH_REFRESH_COOKIE_PATH}
+      max-age-seconds: ${APP_AUTH_REFRESH_COOKIE_MAX_AGE_SECONDS}
+  websocket:
+    external-broker:
+      enabled: ${APP_WEBSOCKET_EXTERNAL_BROKER_ENABLED}
+
+spring.lifecycle:
+  timeout-per-shutdown-phase: 30s
+
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION}
+
+payment:
+  gateway:
+    url: ${PAYMENT_GATEWAY_URL}
+    api-key: ${PAYMENT_GATEWAY_API_KEY}
+    timeout: ${PAYMENT_GATEWAY_TIMEOUT}
+    max-pending-per-user: ${MAX_PENDING_TRANSACTIONS}
+
+rate-limit:
+  requests-per-minute: ${RATE_LIMIT_RPM}
+  auth-attempts-per-window: ${AUTH_RATE_LIMIT}
+  auth-window-minutes: ${AUTH_WINDOW}
+
+encryption:
+  algorithm: AES
+  transformation: AES/GCM/NoPadding
+  key: ${ENCRYPTION_KEY}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: always
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.95, 0.99
+      slo:
+        http.server.requests: 100ms, 200ms, 500ms, 1s
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      paymentGateway:
+        failure-rate-threshold: 50
+        minimum-number-of-calls: 10
+        sliding-window-size: 10
+        sliding-window-type: COUNT_BASED
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        record-exceptions:
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.ResourceAccessException
+          - java.net.ConnectException
+  
+  retry:
+    instances:
+      paymentGateway:
+        max-attempts: 3
+        wait-duration: 5s
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - java.net.SocketTimeoutException
+          - org.springframework.web.client.ResourceAccessException
+          - java.net.ConnectException
+
+logging:
+  level:
+    root: ${LOG_LEVEL}
+    com.example.payment: DEBUG
+    org.springframework.web.socket: DEBUG
+    org.springframework.messaging: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{correlationId}] - %msg%n"
+  file:
+    name: logs/payment-service.log
+    max-size: ${LOG_FILE_MAX_SIZE}
+    max-history: ${LOG_FILE_MAX_HISTORY}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+
+logging:
+  level:
+    com.example.payment: DEBUG
+    org.springframework.web.socket: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  
+  flyway:
+    enabled: false
+
+logging:
+  level:
+    root: WARN
+    com.example.payment: INFO
+
+---
+spring:
+  config:
+    activate:
+      on-profile: production
+  
+  jpa:
+    show-sql: false
+  
+  flyway:
+    validate-on-migrate: true
+
+logging:
+  level:
+    root: WARN
+    com.example.payment: INFO
+  file:
+    name: /var/log/payment-service/application.log
+
+app:
+  websocket:
+    external-broker:
+      enabled: ${APP_WEBSOCKET_EXTERNAL_BROKER_ENABLED:true}
