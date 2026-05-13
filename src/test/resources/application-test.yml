@@ -13,6 +13,6 @@ encryption:
 
 logging:
   level:
-    com.example.payment: DEBUG
+    com.payment: DEBUG
     org.springframework.messaging: WARN
     org.springframework.web.socket: WARN

@@ -12,7 +12,7 @@
         <relativePath/>
     </parent>
 
-    <groupId>com.example</groupId>
+    <groupId>com</groupId>
     <artifactId>websocket-payment-service</artifactId>
     <version>1.0.0</version>
     <name>WebSocket Payment Service</name>
