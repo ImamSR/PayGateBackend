@@ -1,5 +1,15 @@
 package com.payment.service;
 
+import java.util.List;
+
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+
 import com.auth.model.User;
 import com.auth.repository.UserRepository;
 import com.auth.security.UserPrincipal;
@@ -10,17 +20,9 @@ import com.payment.entity.PaymentAccount;
 import com.payment.entity.Transaction;
 import com.payment.repository.PaymentAccountRepository;
 import com.payment.repository.TransactionRepository;
+
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
-import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-
-import java.util.List;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 
 @Service
 public class TransactionService {
@@ -28,7 +30,7 @@ public class TransactionService {
     private final TransactionRepository transactionRepository;
     private final UserRepository userRepository;
     private final PaymentAccountRepository paymentAccountRepository;
-    private final PaymentProcessingService paymentProcessingService;
+    private final PaymentGatewayDispatcher paymentGatewayDispatcher;
     private final PaymentNotificationService paymentNotificationService;
     private final MeterRegistry meterRegistry;
 
@@ -36,20 +38,23 @@ public class TransactionService {
             TransactionRepository transactionRepository,
             UserRepository userRepository,
             PaymentAccountRepository paymentAccountRepository,
-            PaymentProcessingService paymentProcessingService,
+            PaymentGatewayDispatcher paymentGatewayDispatcher,
             PaymentNotificationService paymentNotificationService,
             MeterRegistry meterRegistry
     ) {
         this.transactionRepository = transactionRepository;
         this.userRepository = userRepository;
         this.paymentAccountRepository = paymentAccountRepository;
-        this.paymentProcessingService = paymentProcessingService;
+        this.paymentGatewayDispatcher = paymentGatewayDispatcher;
         this.paymentNotificationService = paymentNotificationService;
         this.meterRegistry = meterRegistry;
 
-        Gauge.builder("payment.transactions.pending", this.transactionRepository, repository -> repository.findByStatus(com.payment.entity.PaymentStatus.PENDING).size())
-                .description("Current number of pending transactions")
-                .register(meterRegistry);
+        Gauge.builder(
+              "payment.transactions.pending",
+              this.transactionRepository,
+              repository -> repository.findByStatus(com.payment.entity.PaymentStatus.PENDING).size()
+      ).description("Current number of pending transactions")
+              .register(meterRegistry);
     }
 
     @Transactional
@@ -62,8 +67,10 @@ public class TransactionService {
                 user.getUsername(),
                 request.amount(),
                 request.currency(),
+                request.provider(),
                 request.paymentMethod()
         );
+
         transaction.updateStatus(transaction.getStatus(), user.getUsername(), "TRANSACTION_CREATED");
         transactionRepository.saveAndFlush(transaction);
 
@@ -75,7 +82,7 @@ public class TransactionService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                paymentProcessingService.processTransaction(transaction.getTransactionId(), user.getUsername());
+                paymentGatewayDispatcher.createPayment(transaction, user.getUsername());
             }
         });
         return response;

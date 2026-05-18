@@ -18,7 +18,7 @@ class Java17FeaturesTest {
         PaymentRequest request = new PaymentRequest(
             new BigDecimal("100.50"),
             "USD",
-            "CREDIT_CARD"
+            null, "CREDIT_CARD"
         );
         
         assertEquals(new BigDecimal("100.50"), request.amount());
@@ -124,7 +124,7 @@ class Java17FeaturesTest {
             new PaymentRequest(
                 new BigDecimal("100.123456"),
                 "USD",
-                "CREDIT_CARD"
+                null, "CREDIT_CARD"
             );
         });
         
@@ -132,7 +132,7 @@ class Java17FeaturesTest {
             new PaymentRequest(
                 new BigDecimal("100.1234"),
                 "USD",
-                "CREDIT_CARD"
+                null, "CREDIT_CARD"
             );
         });
     }

@@ -8,11 +8,12 @@ import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
 import java.sql.PreparedStatement;
-import java.sql.Statement;
+// import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -49,7 +50,7 @@ public class UserRepository {
     private final JdbcTemplate jdbcTemplate;
     private final NamedParameterJdbcTemplate namedParameterJdbcTemplate;
 
-    public UserRepository(@Qualifier("authDataSource") DataSource authDataSource) {
+    public UserRepository(@Qualifier("authDataSource") @NonNull DataSource authDataSource) {
         this.jdbcTemplate = new JdbcTemplate(authDataSource);
         this.namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(authDataSource);
     }
@@ -79,19 +80,31 @@ public class UserRepository {
     }
 
     public List<User> findByRole(UserRole role) {
-        return jdbcTemplate.query(
-                "SELECT * FROM users WHERE role = ? ORDER BY created_at DESC",
-                USER_ROW_MAPPER,
-                role.name()
-        );
+        final RowMapper<User> user_ROW_MAPPER2 = USER_ROW_MAPPER;
+        if (user_ROW_MAPPER2 != null) {
+            return jdbcTemplate.query(
+                    "SELECT * FROM users WHERE role = ? ORDER BY created_at DESC",
+                    user_ROW_MAPPER2,
+                    role.name()
+            );
+        } else {
+            // TODO handle null value
+            return null;
+        }
     }
 
     public List<User> findByEnabled(Boolean enabled) {
-        return jdbcTemplate.query(
-                "SELECT * FROM users WHERE enabled = ? ORDER BY created_at DESC",
-                USER_ROW_MAPPER,
-                enabled
-        );
+        final RowMapper<User> user_ROW_MAPPER2 = USER_ROW_MAPPER;
+        if (user_ROW_MAPPER2 != null) {
+            return jdbcTemplate.query(
+                    "SELECT * FROM users WHERE enabled = ? ORDER BY created_at DESC",
+                    user_ROW_MAPPER2,
+                    enabled
+            );
+        } else {
+            // TODO handle null value
+            return null;
+        }
     }
 
     public long countByRole(UserRole role) {
@@ -104,11 +117,17 @@ public class UserRepository {
     }
 
     public List<User> findUsersCreatedAfter(Instant timestamp) {
-        return jdbcTemplate.query(
-                "SELECT * FROM users WHERE created_at > ? ORDER BY created_at DESC",
-                USER_ROW_MAPPER,
-                Timestamp.from(timestamp)
-        );
+        final RowMapper<User> user_ROW_MAPPER2 = USER_ROW_MAPPER;
+        if (user_ROW_MAPPER2 != null) {
+            return jdbcTemplate.query(
+                    "SELECT * FROM users WHERE created_at > ? ORDER BY created_at DESC",
+                    user_ROW_MAPPER2,
+                    Timestamp.from(timestamp)
+            );
+        } else {
+            // TODO handle null value
+            return null;
+        }
     }
 
     public User save(User user) {

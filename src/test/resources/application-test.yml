@@ -16,3 +16,16 @@ logging:
     com.payment: DEBUG
     org.springframework.messaging: WARN
     org.springframework.web.socket: WARN
+
+
+
+payment:
+  providers:
+    midtrans:
+      base-url: ${MIDTRANS_BASE_URL}
+      server-key:  ${MIDTRANS_SERVER_KEY}
+      client-key: ${MIDTRANS_CLIENT_KEY}
+      merchant-id: ${MIDTRANS_MERCHANT_ID}
+      callback-path: ${MIDTRANS_CALLBACK_PATH}
+      connect-timeout-millis: ${MIDTRANS_CONNECT_TIMEOUT_MILLIS}
+      read-timeout-millis: ${MIDTRANS_READ_TIMEOUT_MILLIS}

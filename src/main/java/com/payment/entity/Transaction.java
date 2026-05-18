@@ -21,7 +21,15 @@ import java.util.UUID;
     @Index(name = "idx_gateway_reference", columnList = "gateway_reference"),
     @Index(name = "idx_transaction_username", columnList = "username")
 })
+
 public class Transaction {
+
+
+    @Enumerated
+    @Column(name= "provider", nullable = false,length=20)
+    private PaymentProvider provider;
+
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -74,17 +82,34 @@ public class Transaction {
     @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<TransactionLog> logs = new ArrayList<>();
 
-    public Transaction() {
+    public Transaction( 
+    ) {
         this.transactionId = UUID.randomUUID().toString();
     }
 
-    public Transaction(Long authUserId, String username, BigDecimal amount, String currency, String paymentMethod) {
+    public Transaction(
+          final Long authUserId,
+          final String username,
+          final BigDecimal amount,
+          final String currency,
+          final PaymentProvider provider,
+          final String paymentMethod
+    ) {
         this();
         this.authUserId = authUserId;
         this.username = username;
         this.amount = amount;
         this.currency = currency;
+        this.provider = provider;
         this.paymentMethod = paymentMethod;
+    }
+
+    public PaymentProvider getProvider(){
+        return provider;
+    }
+
+    public void setProvider(final PaymentProvider provider){
+        this.provider = provider;
     }
 
     public Long getId() {
@@ -146,6 +171,7 @@ public class Transaction {
     public PaymentStatus getStatus() {
         return status;
     }
+
 
     public void setStatus(PaymentStatus status) {
         this.status = status;
