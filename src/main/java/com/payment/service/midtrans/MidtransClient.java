@@ -45,12 +45,12 @@ public class MidtransClient {
             final ResponseEntity<MidtransChargeResponse> response = restTemplate.exchange(
                 url, HttpMethod.POST, httpEntity, MidtransChargeResponse.class);
                 if (response.getBody() == null ) {
-                    throw new MidtransIntegrationExecption("Midtrans error returned empty response body");
+                    throw new MidtransIntegrationException("Midtrans error returned empty response body");
                 } 
 
                 return response.getBody();
         } catch (RestClientException exception){
-            throw new MidtransIntegrationExecption("Failed to call MIDTRANS API", exception);
+            throw new MidtransIntegrationException("Failed to call MIDTRANS API", exception);
         }
     }
 

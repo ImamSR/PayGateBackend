@@ -22,6 +22,8 @@ public class MidtransPaymentGatewayService implements PaymentGatewayService {
     private final TransactionRepository transactionRepository;
     private final PaymentNotificationService paymentNotificationService;
     private final MeterRegistry meterRegistry;
+    private final MidtransClient midtransClient;
+
 
     public MidtransPaymentGatewayService(
         final TransactionRepository transactionRepository,
@@ -45,7 +47,7 @@ public class MidtransPaymentGatewayService implements PaymentGatewayService {
     @Transactional
     public void createPayment (final Transaction transaction, final String username){
         final Transaction managedTransaction = transactionRepository.findByTransactionId(transaction.getTransactionId())
-        .orElseThrow(()-> new IllegalStateException("Transaction Not Found" + transaction.getTransactionId()));
+        .orElseThrow(()-> new IllegalStateException("Transaction not found" + transaction.getTransactionId()));
 
 
         final MidtransChargeRequest chargeRequest = new MidtransChargeRequest(
@@ -67,7 +69,6 @@ public class MidtransPaymentGatewayService implements PaymentGatewayService {
         paymentNotificationService.sendStatusUpdate(username, managedTransaction);
         paymentNotificationService.sendPaymentResponse(username,PaymentResponse.success(managedTransaction.getTransactionId(), managedTransaction.getStatus()));
     }
-    private final MidtransClient midtransClient;
 
     private String mapPaymentType(final String paymentMethod){
         if("BANK_TRANSFER".equalsIgnoreCase(paymentMethod)){
