@@ -41,4 +41,9 @@ public class MidtransSignatureService {
             throw new IllegalStateException("SHA-512 algorithm is not available", exception);
         }
     }
+
+    public void handleNotification(MidtransWebhookNotification notification) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'handleNotification'");
+    }
 }

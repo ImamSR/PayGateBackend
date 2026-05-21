@@ -2,10 +2,15 @@ package com.payment.service.midtrans;
 
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payment.dto.midtrans.MidtransWebhookNotification;
 import com.payment.entity.Transaction;
+import com.payment.entity.webhook.PaymentWebhookEvent;
+import com.payment.entity.PaymentProvider;
 import com.payment.entity.PaymentStatus;
 import com.payment.repository.TransactionRepository;
+import com.payment.repository.webhook.PaymentWebhookEventRepository;
 import com.payment.service.PaymentNotificationService;
 
 
@@ -17,46 +22,89 @@ public class MidtransWebhookService {
     private final TransactionRepository transactionRepository;
     private final MidtransSignatureService midtransSignatureService;
     private final PaymentNotificationService paymentNotificationService;
+    private final PaymentWebhookEventRepository paymentWebhookEventRepository;
+    private final ObjectMapper objectMapper;
 
     public MidtransWebhookService(
         final TransactionRepository transactionRepository,
         final MidtransSignatureService midtransSignatureService,
-        final PaymentNotificationService paymentNotificationService
+        final PaymentNotificationService paymentNotificationService,
+        final PaymentWebhookEventRepository paymentWebhookEventRepository,
+        final ObjectMapper objectMapper
+
     ) {
         this.transactionRepository = transactionRepository;
         this.midtransSignatureService = midtransSignatureService;
         this.paymentNotificationService = paymentNotificationService;
+        this.paymentWebhookEventRepository = paymentWebhookEventRepository;
+        this.objectMapper = objectMapper;
     }
 
 @Transactional
 public void handleNotification(final MidtransWebhookNotification notification){
-    if (!midtransSignatureService.isValidSignature(notification)){
-        throw new IllegalArgumentException("Invalid Midtrans Signature");
+        if (!midtransSignatureService.isValidSignature(notification)){
+            throw new IllegalArgumentException("Invalid Midtrans Signature");
+        }
+
+        final String eventId = buildEventId(notification);
+
+        if (paymentWebhookEventRepository.existsByProviderAndEventId(PaymentProvider.MIDTRANS, eventId)){
+            return;
+        }
+
+        final PaymentWebhookEvent webhookEvent = paymentWebhookEventRepository.save(
+                new PaymentWebhookEvent(
+                    PaymentProvider.MIDTRANS,
+                    eventId,
+                    notification.orderId(),
+                    notification.transactionStatus(),
+                    serializePayload(notification)
+                )
+        );
+
+        final Transaction transaction = transactionRepository.findByTransactionId(notification.orderId())
+            .orElseThrow(() -> new IllegalArgumentException(
+                "Transaction not found for order id:" + notification.orderId()));
+                
+        if (!transaction.getStatus().isTerminal()){
+            final PaymentStatus mappedStatus = mapStatus(   
+                notification.transactionStatus(),
+                notification.fraudStatus()
+            );
+
+            transaction.setGatewayReference(notification.transactionId());
+            transaction.setGatewayResponse(notification.transactionStatus());
+            transaction.setErrorMessage(
+                mappedStatus == PaymentStatus.FAILED ? "Midtrans reported failed payment" : null
+            );
+
+            transaction.updateStatus(mappedStatus,
+            "midtrans-webhook", 
+            "MIDTRANS_WEBHOOK_" + notification.transactionStatus()
+            );
+
+            transactionRepository.save(transaction);
+            paymentNotificationService.sendStatusUpdate(transaction.getUsername(), transaction);
+        }
+        webhookEvent.setProcessed(true);
+        paymentWebhookEventRepository.save(webhookEvent);
     }
 
-    final Transaction transaction = transactionRepository.findByTransactionId(notification.orderId())
-        .orElseThrow(() -> new IllegalArgumentException(
-            "Transaction not found for order id:" + notification.orderId()));
-            
-    if (transaction.getStatus().isTerminal()){
-        return;
+    private String buildEventId(final MidtransWebhookNotification notification) {
+        return notification.transactionId() + ":" + notification.transactionStatus();
     }
-
-    final PaymentStatus mappedStatus = mapStatus(notification.transactionStatus(), notification.fraudStatus());
-
-    transaction.setGatewayReference(notification.transactionId());
-    transaction.setGatewayResponse(notification.transactionStatus());
-    transaction.setErrorMessage(mappedStatus == PaymentStatus.FAILED ? "Midtrans reported failed payment" : null);
-    transaction.updateStatus(mappedStatus, "midtrans-webhook", "MIDTRANS_WEBHOOK_"+ notification.transactionStatus());
-
-    transactionRepository.save(transaction);
-
-    paymentNotificationService.sendStatusUpdate(transaction.getUsername(), transaction);
+    
+    private String serializePayload(final MidtransWebhookNotification notification){
+        try {
+            return objectMapper.writeValueAsString(notification);
+        } catch (JsonProcessingException exception){
+            throw new IllegalStateException("Failed to serialize Midtrans webhook payload", exception);
+        }
     }
 
     private PaymentStatus mapStatus(final String transactionStatus, final String fraudStatus){
         if ("capture".equalsIgnoreCase(transactionStatus)){
-            if("chalangge".equalsIgnoreCase(fraudStatus)){
+            if("challenge".equalsIgnoreCase(fraudStatus)){
                return PaymentStatus.PROCESSING;
             }
             return PaymentStatus.COMPLETED; 
@@ -67,7 +115,7 @@ public void handleNotification(final MidtransWebhookNotification notification){
         }
 
         if ("pending".equalsIgnoreCase(transactionStatus)){
-            return PaymentStatus.PENDING;
+            return PaymentStatus.PROCESSING;
         }
 
         if ("deny".equalsIgnoreCase(transactionStatus)
