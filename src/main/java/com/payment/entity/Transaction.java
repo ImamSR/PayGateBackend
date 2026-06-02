@@ -24,9 +24,8 @@ import java.util.UUID;
 
 public class Transaction {
 
-
-    @Enumerated
-    @Column(name= "provider", nullable = false,length=20)
+    @Enumerated(EnumType.STRING)
+    @Column(name= "provider", nullable = false, length = 20)
     private PaymentProvider provider;
 
 

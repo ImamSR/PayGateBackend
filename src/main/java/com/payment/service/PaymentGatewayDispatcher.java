@@ -26,7 +26,7 @@ public class PaymentGatewayDispatcher {
         final PaymentGatewayService gatewayService = gatewayServices.get(transaction.getProvider());
 
         if (gatewayService == null) {
-            throw new IllegalArgumentException("Unsuported payment provider:" + transaction.getProvider());
+            throw new IllegalArgumentException("Unsupported payment provider: " + transaction.getProvider());
         }
         gatewayService.createPayment(transaction, username);
     }

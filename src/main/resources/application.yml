@@ -111,6 +111,15 @@ payment:
     api-key: ${PAYMENT_GATEWAY_API_KEY}
     timeout: ${PAYMENT_GATEWAY_TIMEOUT}
     max-pending-per-user: ${MAX_PENDING_TRANSACTIONS}
+  providers:
+    midtrans:
+      base-url: ${MIDTRANS_BASE_URL:https://api.sandbox.midtrans.com}
+      server-key: ${MIDTRANS_SERVER_KEY:}
+      client-key: ${MIDTRANS_CLIENT_KEY:}
+      merchant-id: ${MIDTRANS_MERCHANT_ID:}
+      callback-path: ${MIDTRANS_CALLBACK_PATH:/api/webhooks/midtrans}
+      connect-timeout-millis: ${MIDTRANS_CONNECT_TIMEOUT_MILLIS:5000}
+      read-timeout-millis: ${MIDTRANS_READ_TIMEOUT_MILLIS:10000}
 
 rate-limit:
   requests-per-minute: ${RATE_LIMIT_RPM}

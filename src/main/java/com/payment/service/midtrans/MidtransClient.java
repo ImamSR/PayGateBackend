@@ -1,8 +1,8 @@
 package com.payment.service.midtrans;
 
 import com.payment.config.MidtransProperties;
-import com.payment.dto.midtrans.*;
-
+import com.payment.dto.midtrans.MidtransChargeRequest;
+import com.payment.dto.midtrans.MidtransChargeResponse;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;

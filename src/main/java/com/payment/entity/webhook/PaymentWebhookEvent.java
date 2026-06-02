@@ -21,7 +21,7 @@ import jakarta.persistence.Index;
 @Entity
 @Table(name = "payment_webhook_events", indexes ={
     @Index(name = "idx_webhook_provider_event", columnList = "provider,event_id",unique=true),
-    @Index(name = "idx_webhook_provider_event", columnList = "order_id"),
+    @Index(name = "idx_webhook_order_id", columnList = "order_id"),
     @Index(name = "idx_webhook_processed", columnList = "processed")
     
 })
@@ -46,7 +46,7 @@ public class PaymentWebhookEvent {
     private String eventType;
 
     @Column(name = "processed", nullable = false)
-    private Boolean processed;
+    private boolean processed;
 
     @Column(name = "payload", columnDefinition = "TEXT", nullable = false)
     @Convert(converter = EncryptedStringConverter.class)

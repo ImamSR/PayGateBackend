@@ -4,7 +4,9 @@ package com.payment.dto.midtrans;
 import  com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import  com.fasterxml.jackson.annotation.JsonProperty;
 
-@JsonIgnoreProperties
+import java.util.List;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public record MidtransChargeResponse(
     @JsonProperty("transaction_id")
     String transactionId,
@@ -22,7 +24,25 @@ public record MidtransChargeResponse(
     String statusCode,
 
     @JsonProperty("status_message")
-    String statusMessage
+    String statusMessage,
+
+    @JsonProperty("payment_type")
+    String paymentType,
+
+    @JsonProperty("expiry_time")
+    String expiryTime,
+
+    @JsonProperty("qr_string")
+    String qrString,
+
+    @JsonProperty("permata_va_number")
+    String permataVaNumber,
+
+    @JsonProperty("actions")
+    List<MidtransPaymentActionResponse> actions,
+
+    @JsonProperty("va_numbers")
+    List<MidtransVaNumberResponse> vaNumbers
 ) {
     
 }

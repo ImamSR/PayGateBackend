@@ -1,19 +1,15 @@
 package com.payment.service.midtrans;
 
-import org.springframework.stereotype.Service;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.payment.dto.midtrans.MidtransWebhookNotification;
-import com.payment.entity.Transaction;
 import com.payment.entity.webhook.PaymentWebhookEvent;
 import com.payment.entity.PaymentProvider;
 import com.payment.entity.PaymentStatus;
+import com.payment.entity.Transaction;
 import com.payment.repository.TransactionRepository;
 import com.payment.repository.webhook.PaymentWebhookEventRepository;
 import com.payment.service.PaymentNotificationService;
-
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,10 +36,10 @@ public class MidtransWebhookService {
         this.objectMapper = objectMapper;
     }
 
-@Transactional
-public void handleNotification(final MidtransWebhookNotification notification){
+    @Transactional
+    public void handleNotification(final MidtransWebhookNotification notification){
         if (!midtransSignatureService.isValidSignature(notification)){
-            throw new IllegalArgumentException("Invalid Midtrans Signature");
+            throw new IllegalArgumentException("Invalid Midtrans signature");
         }
 
         final String eventId = buildEventId(notification);
@@ -64,8 +60,12 @@ public void handleNotification(final MidtransWebhookNotification notification){
 
         final Transaction transaction = transactionRepository.findByTransactionId(notification.orderId())
             .orElseThrow(() -> new IllegalArgumentException(
-                "Transaction not found for order id:" + notification.orderId()));
-                
+                "Transaction not found for order id: " + notification.orderId()));
+
+        if (transaction.getProvider() != PaymentProvider.MIDTRANS) {
+            throw new IllegalArgumentException("Transaction provider mismatch for order id: " + notification.orderId());
+        }
+
         if (!transaction.getStatus().isTerminal()){
             final PaymentStatus mappedStatus = mapStatus(   
                 notification.transactionStatus(),
@@ -73,9 +73,10 @@ public void handleNotification(final MidtransWebhookNotification notification){
             );
 
             transaction.setGatewayReference(notification.transactionId());
-            transaction.setGatewayResponse(notification.transactionStatus());
             transaction.setErrorMessage(
-                mappedStatus == PaymentStatus.FAILED ? "Midtrans reported failed payment" : null
+                mappedStatus == PaymentStatus.FAILED
+                        ? "Midtrans reported failed payment"
+                        : null
             );
 
             transaction.updateStatus(mappedStatus,
@@ -130,6 +131,6 @@ public void handleNotification(final MidtransWebhookNotification notification){
             return PaymentStatus.PROCESSING;
         }
 
-        throw new IllegalArgumentException("Unsupported Midtrans Transaction Status" + transactionStatus);
+        throw new IllegalArgumentException("Unsupported Midtrans transaction status: " + transactionStatus);
     }
 }

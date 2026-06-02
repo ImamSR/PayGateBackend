@@ -4,6 +4,6 @@ import java.math.BigDecimal;
 
 public record MidtransTransactionDetailRequest(
     String order_id,
-    BigDecimal grossAmount) {
+    BigDecimal gross_amount) {
         
 }

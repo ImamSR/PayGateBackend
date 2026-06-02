@@ -2,14 +2,14 @@ package com.payment.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "payment.provider.midtrans")
+@ConfigurationProperties(prefix = "payment.providers.midtrans")
 public class MidtransProperties {
     private String baseUrl;
     private String serverKey;
     private String clientKey;
     private String merchantId;
     private String callbackPath;
-    private Long connectionTimeoutMillis;
+    private Long connectTimeoutMillis;
     private Long readTimeoutMillis;
 
     public String getBaseUrl(){
@@ -52,12 +52,12 @@ public class MidtransProperties {
         this.callbackPath = callbackPath;
     }
 
-    public Long getConnectionTimeoutMillis(){
-        return connectionTimeoutMillis;
+    public Long getConnectTimeoutMillis(){
+        return connectTimeoutMillis;
     }
 
-    public void setConnectionTimeoutMillis(final Long connectionTimeoutMillis){
-        this.connectionTimeoutMillis = connectionTimeoutMillis;
+    public void setConnectTimeoutMillis(final Long connectTimeoutMillis){
+        this.connectTimeoutMillis = connectTimeoutMillis;
     }
 
     public Long getReadTimeoutMillis(){
